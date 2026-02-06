@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
+import "./index.css";
 
 // --- Game Constants & Types ---
 type Stage = 1 | 2 | 3 | 4;
@@ -295,7 +296,12 @@ class AmbientMusic {
 }
 const BGM = new AmbientMusic();
 const Sound = {
+  enabled: true,
+  setEnabled: (enabled: boolean) => {
+    Sound.enabled = enabled;
+  },
   playTone: (freq: number, type: OscillatorType, duration: number, vol: number = 0.1, slide: boolean = false) => {
+    if (!Sound.enabled) return;
     try {
       const ctx = getAudioCtx();
       const osc = ctx.createOscillator();
@@ -314,22 +320,27 @@ const Sound = {
     } catch (e) {}
   },
   playCrash: () => {
+    if (!Sound.enabled) return;
     Sound.playTone(150, 'sawtooth', 0.6, 0.4, true);
     Sound.playTone(100, 'square', 0.8, 0.4, true);
   },
   playStart: () => {
+    if (!Sound.enabled) return;
     Sound.playTone(400, 'sine', 0.2, 0.1);
     setTimeout(() => Sound.playTone(600, 'sine', 0.4, 0.1), 150);
   },
   playLevelClear: () => {
+    if (!Sound.enabled) return;
     Sound.playTone(600, 'sine', 0.2, 0.1);
     setTimeout(() => Sound.playTone(800, 'sine', 0.2, 0.1), 150);
   },
   playUnlock: () => {
+    if (!Sound.enabled) return;
     Sound.playTone(1200, 'triangle', 0.3, 0.1);
     setTimeout(() => Sound.playTone(1800, 'triangle', 0.6, 0.1), 100);
   },
   playModeSwitch: () => {
+    if (!Sound.enabled) return;
     Sound.playTone(300, 'square', 0.1, 0.1);
     setTimeout(() => Sound.playTone(150, 'square', 0.4, 0.2, true), 100);
   }
@@ -1359,6 +1370,7 @@ const App = () => {
   // Save Settings on Change
   useEffect(() => {
       localStorage.setItem('DEEP_SPACE_SETTINGS', JSON.stringify({ lang, bgmOn }));
+      Sound.setEnabled(bgmOn);
   }, [lang, bgmOn]);
 
   useEffect(() => {
@@ -1393,8 +1405,10 @@ const App = () => {
   };
 
   const toggleBgm = () => {
-      setBgmOn(!bgmOn);
-      if (!bgmOn) BGM.start();
+      const newState = !bgmOn;
+      setBgmOn(newState);
+      Sound.setEnabled(newState);
+      if (newState) BGM.start();
       else BGM.stop();
   };
 
