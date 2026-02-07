@@ -39,8 +39,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     }
   },
-  // 生产环境使用 /Flying_V1/ 作为基础路径
-  base: '/Flying_V1/',
+  // 使用根路径，避免子目录部署问题
+  base: '/',
   publicDir: 'public',
   build: {
     outDir: 'dist',

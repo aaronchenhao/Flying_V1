@@ -4,24 +4,17 @@
     "outputDir": "dist"
   },
   "include": [
-    "dist/**/*",
-    "dist/assets/**/*"
+    "dist/**/*"
   ],
   "routes": [
     {
-      "path": "/Flying_V1/assets/*",
+      "path": "/assets/*",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {
-      "path": "/Flying_V1/*",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
-      }
-    },
-    {
-      "path": "/Flying_V1",
+      "path": "/*",
       "headers": {
         "Cache-Control": "no-cache, no-store, must-revalidate"
       }

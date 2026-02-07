@@ -1,2 +1,2 @@
-/Flying_V1/assets/* /Flying_V1/assets/:splat 200
-/Flying_V1/* /Flying_V1/index.html 200
+/assets/* /assets/:splat 200
+/* /index.html 200
