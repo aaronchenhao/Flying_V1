@@ -5,8 +5,13 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: 5173,
     host: '0.0.0.0',
+    // 允许从小程序 WebView 访问
+    cors: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    }
   },
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -14,5 +19,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     }
   },
-  base: '/Flying_V1/'
+  // 开发环境不使用 base，生产环境使用
+  base: process.env.NODE_ENV === 'production' ? '/Flying_V1/' : '/'
 });

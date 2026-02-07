@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "star-bg": "/components/star-bg/star-bg"
+  },
+  "navigationBarTitleText": "深空逃逸",
+  "navigationStyle": "custom"
+}

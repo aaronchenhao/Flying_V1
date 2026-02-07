@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./miniprogram/utils/wx-bridge";
 
 // --- Game Constants & Types ---
 type Stage = 1 | 2 | 3 | 4;
@@ -10,6 +11,14 @@ type Language = "CN" | "EN";
 
 // --- Configuration / 开发者配置 ---
 const ALLOW_SAFE_MODE_TOGGLE = true;
+
+// --- WeChat MiniProgram Bridge ---
+declare const window: any;
+const wxBridge = typeof window !== 'undefined' ? window.wxBridge : null;
+const wxNotifyReady = () => wxBridge?.notifyReady?.();
+const wxNotifyGameOver = (score: number, stage: number) => wxBridge?.notifyGameOver?.(score, stage);
+const wxNotifyStageClear = (stage: number, score: number) => wxBridge?.notifyStageClear?.(stage, score);
+const wxVibrate = (short = true) => wxBridge?.vibrate?.(short);
 
 // --- Logic Config ---
 const STAGE_LOGIC = {
@@ -240,10 +249,19 @@ const MODE_COLORS: Record<ControlMode, string> = {
 let AudioCtx: AudioContext | null = null;
 const getAudioCtx = () => {
     if (!AudioCtx) {
-        AudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) {
+            throw new Error('AudioContext not supported');
+        }
+        try {
+            AudioCtx = new AudioContextClass();
+        } catch (e) {
+            console.warn('[Audio] 创建 AudioContext 失败:', e);
+            throw e;
+        }
     }
-    if (AudioCtx.state === 'suspended') {
-        AudioCtx.resume();
+    if (AudioCtx && AudioCtx.state === 'suspended') {
+        AudioCtx.resume().catch(() => {});
     }
     return AudioCtx;
 };
@@ -778,23 +796,23 @@ class GameEngine {
 // --- NEW UI COMPONENTS ---
 
 const TerminalModal = ({ title, onClose, children, color = "cyan", showFooter = true }: any) => {
-  const glowColor = color === 'red' ? 'shadow-red-500/20' : color === 'yellow' ? 'shadow-yellow-500/20' : 'shadow-cyan-500/20';
-  const textColor = color === 'red' ? 'text-red-500' : color === 'yellow' ? 'text-yellow-500' : 'text-cyan-500';
+  const textColor = color === 'red' ? '#ef4444' : color === 'yellow' ? '#eab308' : '#06b6d4';
+  const borderColor = color === 'red' ? 'rgba(239,68,68,0.2)' : color === 'yellow' ? 'rgba(234,179,8,0.2)' : 'rgba(6,182,212,0.2)';
 
   return (
-    <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-md">
-      <div className={`relative w-full max-w-lg bg-[#0a0a10]/95 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden group border-l border-r border-white/5 ${glowColor}`}>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 pointer-events-none bg-[length:100%_4px,3px_100%]"></div>
-        <div className="flex items-center justify-between p-6 pb-2 z-10 flex-shrink-0">
-          <div className="flex flex-col">
-            <h2 className={`text-2xl font-bold tracking-[0.1em] uppercase ${textColor} font-sans drop-shadow-md`}>{title}</h2>
-            <div className={`h-[2px] w-8 mt-1 bg-gradient-to-r from-${color === 'cyan' ? 'cyan-500' : color === 'red' ? 'red-500' : 'yellow-500'} to-transparent`}></div>
+    <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: '32rem', backgroundColor: 'rgba(10,10,16,0.95)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden', borderLeft: `1px solid ${borderColor}`, borderRight: `1px solid ${borderColor}` }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.1) 50%), linear-gradient(90deg, rgba(255,0,0,0.03), rgba(0,255,0,0.01), rgba(0,0,255,0.03))', zIndex: 0, pointerEvents: 'none', backgroundSize: '100% 4px, 3px 100%' }}></div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 24px 8px', zIndex: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '0.1em', textTransform: 'uppercase', color: textColor, fontFamily: 'sans-serif', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>{title}</h2>
+            <div style={{ height: '2px', width: '32px', marginTop: '4px', background: `linear-gradient(to right, ${textColor}, transparent)` }}></div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-full">
+          <button onClick={onClose} style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', borderRadius: '50%', backgroundColor: 'transparent', border: 'none', WebkitAppearance: 'none', padding: 0 }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 pt-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent font-mono text-sm z-10">{children}</div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px', fontFamily: 'monospace', fontSize: '14px', zIndex: 10, color: '#d1d5db' }}>{children}</div>
       </div>
     </div>
   );
@@ -810,13 +828,13 @@ const MockQRCode = ({ color, name }: { color: string, name: string }) => {
         if (active || i < 4 || i > size*size - 5) cells.push(i);
     }
     return (
-        <div className="w-full h-full relative group overflow-hidden bg-black">
-            <div className="w-full h-full grid grid-cols-6 gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+        <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', backgroundColor: 'black' }}>
+            <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '2px', opacity: 0.8 }}>
                  {Array.from({length: 36}).map((_, i) => (
-                     <div key={i} className={`transition-colors duration-500 ${cells.includes(i) ? 'bg-white' : 'bg-transparent'}`} style={{ backgroundColor: cells.includes(i) ? color : 'transparent' }}></div>
+                     <div key={i} style={{ backgroundColor: cells.includes(i) ? color : 'transparent', transition: 'background-color 0.5s' }}></div>
                  ))}
             </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-transparent h-[50%] animate-scanline pointer-events-none"></div>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent)', height: '50%', pointerEvents: 'none' }}></div>
         </div>
     );
 };
@@ -825,19 +843,19 @@ const AchievementsModal = ({ stats, onClose, lang }: { stats: GameStats, onClose
     const t = TRANSLATIONS[lang];
     return (
         <TerminalModal title={t.ui.achievements} onClose={onClose} color="yellow">
-            <div className="grid grid-cols-1 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                 {ACHIEVEMENTS_LOGIC.map(achLogic => {
                     const unlocked = achLogic.check(stats);
                     const achText = t.achievements[achLogic.id as keyof typeof t.achievements];
                     return (
-                        <div key={achLogic.id} className={`group relative p-4 flex justify-between items-center transition-all duration-300 overflow-hidden ${unlocked ? 'bg-yellow-500/10 hover:bg-yellow-500/20' : 'bg-white/5 opacity-50'}`}>
-                             <div className={`absolute left-0 top-0 bottom-0 w-[2px] transition-all ${unlocked ? 'bg-yellow-500 h-full' : 'bg-gray-700 h-0 group-hover:h-full'}`}></div>
-                             <div className="flex-1 pl-3">
-                                <h3 className={`font-bold text-sm tracking-wide mb-1 ${unlocked ? 'text-yellow-100' : 'text-gray-500'}`}>{achText.title}</h3>
-                                <p className="text-[10px] text-gray-400 font-sans tracking-wider uppercase">{achText.desc}</p>
+                        <div key={achLogic.id} style={{ position: 'relative', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden', backgroundColor: unlocked ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.05)', opacity: unlocked ? 1 : 0.5 }}>
+                             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '2px', backgroundColor: unlocked ? '#eab308' : '#374151' }}></div>
+                             <div style={{ flex: 1, paddingLeft: '12px' }}>
+                                <h3 style={{ fontWeight: 'bold', fontSize: '14px', letterSpacing: '0.05em', marginBottom: '4px', color: unlocked ? '#fef9c3' : '#6b7280' }}>{achText.title}</h3>
+                                <p style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'sans-serif', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{achText.desc}</p>
                             </div>
-                            <div className="ml-4 flex items-center justify-center w-8 h-8">
-                                {unlocked ? <span className="text-lg drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]">🏆</span> : <div className="w-2 h-2 rounded-full bg-gray-800"></div>}
+                            <div style={{ marginLeft: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px' }}>
+                                {unlocked ? <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 8px rgba(234,179,8,0.8))' }}>🏆</span> : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#1f2937' }}></div>}
                             </div>
                         </div>
                     )
@@ -852,36 +870,36 @@ const ManualModal = ({ onClose, lang }: { onClose: () => void, lang: Language })
     const [tab, setTab] = useState<'PROTOCOLS' | 'INTEL'>('PROTOCOLS');
     return (
         <TerminalModal title={t.ui.manual} onClose={onClose} color="cyan">
-            <div className="flex gap-6 mb-8 border-b border-white/5 pb-1">
-                <button onClick={() => setTab('PROTOCOLS')} className={`text-[10px] font-bold tracking-[0.2em] transition-all pb-2 relative ${tab === 'PROTOCOLS' ? 'text-cyan-400' : 'text-gray-600 hover:text-gray-400'}`}>{t.ui.protocols}{tab === 'PROTOCOLS' && <div className="absolute bottom-[-1px] left-0 w-full h-[1px] bg-cyan-400 shadow-[0_0_10px_cyan]"></div>}</button>
-                <button onClick={() => setTab('INTEL')} className={`text-[10px] font-bold tracking-[0.2em] transition-all pb-2 relative ${tab === 'INTEL' ? 'text-cyan-400' : 'text-gray-600 hover:text-gray-400'}`}>{t.ui.intel}{tab === 'INTEL' && <div className="absolute bottom-[-1px] left-0 w-full h-[1px] bg-cyan-400 shadow-[0_0_10px_cyan]"></div>}</button>
+            <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>
+                <button onClick={() => setTab('PROTOCOLS')} style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.2em', transition: 'all 0.2s', paddingBottom: '8px', position: 'relative', color: tab === 'PROTOCOLS' ? '#22d3ee' : '#4b5563', backgroundColor: 'transparent', border: 'none', WebkitAppearance: 'none' }}>{t.ui.protocols}{tab === 'PROTOCOLS' && <div style={{ position: 'absolute', bottom: '-1px', left: 0, width: '100%', height: '1px', backgroundColor: '#22d3ee' }}></div>}</button>
+                <button onClick={() => setTab('INTEL')} style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.2em', transition: 'all 0.2s', paddingBottom: '8px', position: 'relative', color: tab === 'INTEL' ? '#22d3ee' : '#4b5563', backgroundColor: 'transparent', border: 'none', WebkitAppearance: 'none' }}>{t.ui.intel}{tab === 'INTEL' && <div style={{ position: 'absolute', bottom: '-1px', left: 0, width: '100%', height: '1px', backgroundColor: '#22d3ee' }}></div>}</button>
             </div>
-            <div className="animate-fade-in">
+            <div>
                 {tab === 'PROTOCOLS' && (
-                    <div className="space-y-6">
-                        <div className="space-y-4">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                              {t.ui.howToPlay.map((line: string, i: number) => (
-                                <div key={i} className="flex gap-4 items-start group">
-                                    <div className={`mt-1.5 w-1 h-1 flex-shrink-0 transform rotate-45 transition-colors ${i === t.ui.howToPlay.length - 1 ? 'bg-red-500' : 'bg-cyan-600 group-hover:bg-cyan-400'}`}></div>
-                                    <p className={`text-xs leading-relaxed ${i === t.ui.howToPlay.length - 1 ? "text-red-400 font-bold" : "text-gray-300"}`}>{line}</p>
+                                <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                                    <div style={{ marginTop: '6px', width: '4px', height: '4px', flexShrink: 0, transform: 'rotate(45deg)', WebkitTransform: 'rotate(45deg)', backgroundColor: i === t.ui.howToPlay.length - 1 ? '#ef4444' : '#0891b2' }}></div>
+                                    <p style={{ fontSize: '12px', lineHeight: 1.6, color: i === t.ui.howToPlay.length - 1 ? '#f87171' : '#d1d5db', fontWeight: i === t.ui.howToPlay.length - 1 ? 'bold' : 'normal' }}>{line}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
                 {tab === 'INTEL' && (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                         {[1, 2, 3, 4].map((s) => {
                             const stageInfo = t.stages[s as Stage];
                             const config = STAGE_LOGIC[s as Stage];
                             return (
-                                <div key={s} className="relative p-4 bg-white/5 hover:bg-white/10 transition-colors group">
-                                    <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: config.color }}></div>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex flex-col"><span className="text-[9px] font-bold tracking-widest text-gray-500 mb-1">STAGE 0{s}</span><h3 className="font-bold text-sm tracking-widest uppercase text-white group-hover:text-cyan-200 transition-colors">{stageInfo.name}</h3></div>
-                                        <span className="text-[10px] font-mono px-2 py-0.5 bg-black/30 text-gray-400 rounded">{config.duration}s</span>
+                                <div key={s} style={{ position: 'relative', padding: '16px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '3px', backgroundColor: config.color }}></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontSize: '9px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '4px' }}>STAGE 0{s}</span><h3 style={{ fontWeight: 'bold', fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'white' }}>{stageInfo.name}</h3></div>
+                                        <span style={{ fontSize: '10px', fontFamily: 'monospace', padding: '2px 8px', backgroundColor: 'rgba(0,0,0,0.3)', color: '#9ca3af', borderRadius: '2px' }}>{config.duration}s</span>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 font-sans tracking-wide leading-relaxed pl-1 border-l border-white/10 ml-1">{stageInfo.desc}</p>
+                                    <p style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'sans-serif', letterSpacing: '0.05em', lineHeight: 1.6, paddingLeft: '4px', borderLeft: '1px solid rgba(255,255,255,0.1)', marginLeft: '4px' }}>{stageInfo.desc}</p>
                                 </div>
                             )
                         })}
@@ -899,18 +917,18 @@ const LegalModal = ({ onClose, lang }: { onClose: () => void, lang: Language }) 
         return text.split('\n').map((line, i) => {
             if (line.startsWith('**')) return <h3 key={i} className="text-cyan-400 font-bold mt-6 mb-3 text-[10px] tracking-[0.2em] uppercase border-b border-cyan-900/30 pb-1 w-fit">{line.replace(/\*\*/g, '')}</h3>
             if (line.trim().startsWith('-')) return <div key={i} className="flex gap-3 mb-2 ml-1"><span className="text-cyan-700 text-[10px] pt-1">›</span><span className="text-gray-400 text-xs leading-relaxed">{line.replace('-', '').trim()}</span></div>
-            if (line.trim() === "") return <div key={i} className="h-2"/>
-            return <p key={i} className="text-gray-400 mb-2 leading-relaxed text-xs">{line}</p>
+            if (line.trim() === "") return <div key={i} style={{ height: '8px' }}/>
+            return <p key={i} style={{ color: '#9ca3af', marginBottom: '8px', lineHeight: 1.6, fontSize: '12px' }}>{line}</p>
         })
     }
     return (
         <TerminalModal title={t.ui.legal.title} onClose={onClose} color="cyan">
-             <div className="flex gap-4 mb-8 border-b border-white/5 pb-1 flex-wrap">
+             <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px', flexWrap: 'wrap' }}>
                  {t.ui.legal.tabs.map((tab: string, i: number) => (
-                     <button key={i} onClick={() => setActiveTab(i)} className={`text-[10px] font-bold tracking-[0.2em] transition-all pb-2 relative ${activeTab === i ? 'text-cyan-400' : 'text-gray-600 hover:text-gray-400'}`}>{tab}{activeTab === i && <div className="absolute bottom-[-1px] left-0 w-full h-[1px] bg-cyan-400 shadow-[0_0_10px_cyan]"></div>}</button>
+                     <button key={i} onClick={() => setActiveTab(i)} style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.2em', transition: 'all 0.2s', paddingBottom: '8px', position: 'relative', color: activeTab === i ? '#22d3ee' : '#4b5563', backgroundColor: 'transparent', border: 'none', WebkitAppearance: 'none' }}>{tab}{activeTab === i && <div style={{ position: 'absolute', bottom: '-1px', left: 0, width: '100%', height: '1px', backgroundColor: '#22d3ee' }}></div>}</button>
                  ))}
              </div>
-             <div className="animate-fade-in pl-1">{parseContent(t.ui.legal.content[activeTab as keyof typeof t.ui.legal.content])}</div>
+             <div style={{ paddingLeft: '4px' }}>{parseContent(t.ui.legal.content[activeTab as keyof typeof t.ui.legal.content])}</div>
         </TerminalModal>
     );
 }
@@ -921,12 +939,12 @@ const PrivacyModal = ({ onClose, lang }: { onClose: () => void, lang: Language }
         return lines.map((block, i) => {
              const parts = block.split('\n');
              return (
-                 <div key={i} className="mb-4">
+                 <div key={i} style={{ marginBottom: '16px' }}>
                      {parts.map((line, j) => {
                         if (line.trim().startsWith('**')) {
-                             return <h3 key={j} className="text-cyan-400 font-bold mt-2 mb-2 text-[10px] tracking-[0.2em] uppercase border-b border-cyan-900/30 pb-1 w-fit">{line.replace(/\*\*/g, '')}</h3>
+                             return <h3 key={j} style={{ color: '#22d3ee', fontWeight: 'bold', marginTop: '8px', marginBottom: '8px', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', borderBottom: '1px solid rgba(22,78,99,0.3)', paddingBottom: '4px', width: 'fit-content' }}>{line.replace(/\*\*/g, '')}</h3>
                         }
-                        return <p key={j} className="text-gray-400 mb-1 leading-relaxed text-xs">{line}</p>
+                        return <p key={j} style={{ color: '#9ca3af', marginBottom: '4px', lineHeight: 1.6, fontSize: '12px' }}>{line}</p>
                      })}
                  </div>
              )
@@ -934,7 +952,7 @@ const PrivacyModal = ({ onClose, lang }: { onClose: () => void, lang: Language }
     }
     return (
         <TerminalModal title={t.ui.privacy} onClose={onClose} color="cyan">
-             <div className="animate-fade-in pl-1">
+             <div style={{ paddingLeft: '4px' }}>
                 {parseContent(t.ui.privacyContent)}
              </div>
         </TerminalModal>
@@ -945,12 +963,12 @@ const FAQModal = ({ onClose, lang }: { onClose: () => void, lang: Language }) =>
     const t = TRANSLATIONS[lang];
     return (
         <TerminalModal title={t.ui.faq} onClose={onClose} color="cyan">
-             <div className="space-y-8">
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                  {t.ui.faqContent.map((item, i) => (
-                     <div key={i} className="relative pl-4">
-                         <div className="absolute left-0 top-1.5 w-1 h-1 bg-cyan-600 rounded-full"></div>
-                         <h3 className="text-gray-200 font-bold mb-2 tracking-wide text-xs">{item.q}</h3>
-                         <p className="text-gray-500 text-[10px] leading-relaxed font-sans">{item.a}</p>
+                     <div key={i} style={{ position: 'relative', paddingLeft: '16px' }}>
+                         <div style={{ position: 'absolute', left: 0, top: '6px', width: '4px', height: '4px', backgroundColor: '#0891b2', borderRadius: '50%' }}></div>
+                         <h3 style={{ color: '#e5e7eb', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em', fontSize: '12px' }}>{item.q}</h3>
+                         <p style={{ color: '#6b7280', fontSize: '10px', lineHeight: 1.6, fontFamily: 'sans-serif' }}>{item.a}</p>
                      </div>
                  ))}
              </div>
@@ -962,19 +980,19 @@ const MorePlatformsModal = ({ onClose, lang }: { onClose: () => void, lang: Lang
     const t = TRANSLATIONS[lang]; 
     return (
         <TerminalModal title={t.ui.morePlatforms} onClose={onClose} color="cyan" showFooter={false}>
-             <div className="flex flex-col items-center justify-center w-full pt-4">
-                <div className="w-full space-y-12">
-                    <div className="flex flex-col items-center w-full gap-10">
+             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: '16px' }}>
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '48px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '40px' }}>
                         {t.ui.socialChannels.map((channel, i) => (
-                            <div key={i} className="flex flex-col items-center group w-full">
-                                <div className="text-sm font-bold text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)] tracking-[0.3em] uppercase mb-6 transition-all duration-500">{channel.name}</div>
-                                <div className="relative w-48 h-48 md:w-56 md:h-56 transition-transform duration-500 group-hover:scale-105">
-                                    <div className="absolute inset-0 bg-cyan-500/5 blur-xl group-hover:bg-cyan-500/10 transition-colors rounded-full"></div>
-                                    <div className="absolute inset-0 border border-white/10 group-hover:border-cyan-500/30 transition-colors p-2 bg-black/50 backdrop-blur-sm">
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9ca3af', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '24px' }}>{channel.name}</div>
+                                <div style={{ position: 'relative', width: '192px', height: '192px' }}>
+                                    <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(6,182,212,0.05)', borderRadius: '50%' }}></div>
+                                    <div style={{ position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
                                          <MockQRCode color={channel.color} name={channel.id} />
                                     </div>
-                                    <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-white/30 group-hover:border-cyan-400"></div>
-                                    <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-white/30 group-hover:border-cyan-400"></div>
+                                    <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '8px', height: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', borderLeft: '1px solid rgba(255,255,255,0.3)' }}></div>
+                                    <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', borderBottom: '1px solid rgba(255,255,255,0.3)', borderRight: '1px solid rgba(255,255,255,0.3)' }}></div>
                                 </div>
                             </div>
                         ))}
@@ -999,11 +1017,11 @@ const FlashWarning = ({ mode, lang }: { mode: ControlMode | null, lang: Language
     const color = MODE_COLORS[mode];
     return (
         <>
-            <div className="absolute inset-0 pointer-events-none z-30 animate-pulse-border" style={{ '--color': color } as React.CSSProperties}></div>
-            <div className="absolute top-24 left-0 w-full flex justify-center pointer-events-none z-40 animate-fade-in-out">
-                 <div className="text-center opacity-80 backdrop-blur-sm bg-black/20 p-2 rounded">
-                     <h1 className="text-3xl font-black italic tracking-widest" style={{ color: color }}>{config.label}</h1>
-                     <p className="text-white text-sm font-bold uppercase tracking-[0.3em]">{config.sub}</p>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 30, boxShadow: `inset 0 0 0 4px ${color}40`, animation: 'pulse-border 1s ease-in-out infinite' }}></div>
+            <div style={{ position: 'absolute', top: '96px', left: 0, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 40, animation: 'fade-in-out 2s ease-in-out infinite' }}>
+                 <div style={{ textAlign: 'center', opacity: 0.8, backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px' }}>
+                     <h1 style={{ fontSize: '30px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '0.1em', color: color }}>{config.label}</h1>
+                     <p style={{ color: 'white', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.3em' }}>{config.sub}</p>
                  </div>
             </div>
         </>
@@ -1011,17 +1029,17 @@ const FlashWarning = ({ mode, lang }: { mode: ControlMode | null, lang: Language
 }
 
 const LangToggle = ({ lang, toggleLang }: { lang: Language, toggleLang: () => void }) => (
-    <button onClick={toggleLang} className="text-xs font-bold tracking-widest text-gray-500 hover:text-white transition-colors border border-gray-700 px-2 py-1 rounded bg-black/50">
-        <span className={lang === 'CN' ? 'text-white' : 'text-gray-600'}>CN</span> / <span className={lang === 'EN' ? 'text-white' : 'text-gray-600'}>EN</span>
+    <button onClick={toggleLang} style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', border: '1px solid #374151', padding: '4px 8px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.5)', WebkitAppearance: 'none' }}>
+        <span style={{ color: lang === 'CN' ? 'white' : '#4b5563' }}>CN</span> / <span style={{ color: lang === 'EN' ? 'white' : '#4b5563' }}>EN</span>
     </button>
 );
 
 const HeaderControls = ({ bgmOn, toggleBgm, lang, toggleLang, t }: any) => (
-    <div className="flex gap-4 text-xs font-bold tracking-widest text-gray-500 items-center pointer-events-auto z-50">
-         <button onClick={toggleBgm} className={`hover:text-white transition-colors uppercase ${bgmOn ? 'text-white' : ''} whitespace-nowrap`}>
+    <div style={{ display: 'flex', gap: '16px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', alignItems: 'center', pointerEvents: 'auto', zIndex: 50 }}>
+         <button onClick={toggleBgm} style={{ color: bgmOn ? 'white' : '#6b7280', textTransform: 'uppercase', whiteSpace: 'nowrap', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', WebkitAppearance: 'none' }}>
             {bgmOn ? t.ui.bgmOn : t.ui.bgmOff}
          </button>
-         <span className="text-gray-700">|</span>
+         <span style={{ color: '#374151' }}>|</span>
          <LangToggle lang={lang} toggleLang={toggleLang} />
     </div>
 );
@@ -1030,11 +1048,23 @@ const MenuButton = ({ onClick, children, primary = false, disabled = false }: an
     <button 
       onClick={onClick}
       disabled={disabled}
-      className={`w-full mb-3 font-bold text-xs tracking-[0.2em] uppercase transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border
-        ${primary 
-          ? 'py-4 px-6 bg-white text-black border-transparent shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:bg-gray-200' 
-          : 'py-3 px-6 border-white/10 bg-black/40 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/5'
-        }`}
+      style={{
+        width: '100%',
+        marginBottom: '12px',
+        fontWeight: 'bold',
+        fontSize: '12px',
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        transition: 'all 0.2s',
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        WebkitAppearance: 'none',
+        border: primary ? 'none' : '1px solid rgba(255,255,255,0.1)',
+        backgroundColor: primary ? 'white' : 'rgba(0,0,0,0.4)',
+        color: primary ? 'black' : '#9ca3af',
+        padding: primary ? '16px 24px' : '12px 24px',
+        boxShadow: primary ? '0 0 15px rgba(255,255,255,0.3)' : 'none'
+      }}
     >
       {children}
     </button>
@@ -1061,11 +1091,11 @@ const UIOverlay = ({
 
   if (gameState === "PAUSED") {
       return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md p-8 text-center z-50 animate-fade-in">
-             <div className="w-full max-w-sm border-t border-b border-white/10 py-12 relative">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black px-4 text-[10px] font-bold tracking-[0.3em] text-gray-500">SYSTEM HALTED</div>
-                <h2 className="text-3xl font-black text-white mb-8 tracking-[0.2em] font-sans">{t.ui.paused}</h2>
-                <div className="space-y-4">
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', padding: '32px', textAlign: 'center', zIndex: 50 }}>
+             <div style={{ width: '100%', maxWidth: '24rem', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingTop: '48px', paddingBottom: '48px', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', WebkitTransform: 'translate(-50%, -50%)', backgroundColor: 'black', paddingLeft: '16px', paddingRight: '16px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.3em', color: '#6b7280' }}>SYSTEM HALTED</div>
+                <h2 style={{ fontSize: '30px', fontWeight: 900, color: 'white', marginBottom: '32px', letterSpacing: '0.2em', fontFamily: 'sans-serif' }}>{t.ui.paused}</h2>
+                <div>
                     <MenuButton primary onClick={onResume}>{t.ui.resume}</MenuButton>
                     <MenuButton onClick={onRestart}>{t.ui.restart}</MenuButton>
                     <MenuButton onClick={onQuit}>{t.ui.quit}</MenuButton>
@@ -1084,28 +1114,64 @@ const UIOverlay = ({
     return (
       <>
         <FlashWarning mode={flashMode} lang={lang} />
-        <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none text-white select-none z-30">
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none', color: 'white', userSelect: 'none', zIndex: 30, boxSizing: 'border-box' }}>
           <div>
-            <h1 className="text-4xl font-bold tracking-widest leading-none text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] font-sans">{score.toString().padStart(5, '0')}</h1>
-            <div className="flex flex-col items-start gap-1 mt-2">
-                 <div className="flex items-center gap-2">
-                     <p className={`text-[10px] font-bold tracking-[0.2em] uppercase transition-colors duration-500 ${isAbnormal ? 'animate-text-blink' : ''}`} style={{ color: modeColor }}>
+            <h1 style={{ fontSize: '36px', fontWeight: 'bold', letterSpacing: '0.1em', lineHeight: 1, color: 'white', textShadow: '0 0 10px rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>{score.toString().padStart(5, '0')}</h1>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', marginTop: '8px' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <p style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.2em', textTransform: 'uppercase', transition: 'color 0.5s', color: modeColor }}>
                         {t.stages[stage as Stage].name} // {modeInfo.label}
                      </p>
                  </div>
-                 {safeMode && <div className="text-[9px] font-bold text-green-500 tracking-widest border border-green-500/30 px-2 py-0.5 bg-green-900/30 mt-1">[ {t.ui.safeMode} ]</div>}
+                 {safeMode && <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#22c55e', letterSpacing: '0.1em', border: '1px solid rgba(34,197,94,0.3)', padding: '2px 8px', backgroundColor: 'rgba(20,83,45,0.3)', marginTop: '4px' }}>[ {t.ui.safeMode} ]</div>}
             </div>
           </div>
-          <div className="flex gap-4 items-center pointer-events-auto">
-             <button onClick={onPause} className="w-10 h-10 border border-white/20 flex items-center justify-center backdrop-blur-sm transition-colors hover:bg-white/10 group">
-                 <div className="w-3 h-3 border-l-2 border-r-2 border-white group-hover:scale-110 transition-transform"></div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', pointerEvents: 'auto', flexShrink: 0 }}>
+             <button onClick={onPause} style={{ width: '36px', height: '36px', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', backgroundColor: 'transparent', WebkitAppearance: 'none', padding: 0 }}>
+                 <div style={{ width: '10px', height: '10px', borderLeft: '2px solid white', borderRight: '2px solid white' }}></div>
              </button>
-             <div className="w-16 h-16 border-2 border-gray-800 flex items-center justify-center relative rounded-full">
-                <svg className="absolute w-full h-full transform -rotate-90 pointer-events-none">
-                <circle cx="30" cy="30" r="28" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-gray-900" />
-                <circle cx="30" cy="30" r="28" stroke={STAGE_LOGIC[stage as Stage].color} strokeWidth="2" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (175 * progress) / 100} />
-                </svg>
-                <span className="text-lg font-bold font-mono">{Math.floor(Math.max(0, STAGE_LOGIC[stage as Stage].duration - time))}</span>
+             <div style={{ position: 'relative', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+                {/* 背景圆 */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, border: '3px solid #1f2937', borderRadius: '50%' }}></div>
+                {/* 进度圆环 - 使用左右两个半圆实现 */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                   {progress <= 50 ? (
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        border: '3px solid transparent',
+                        borderTopColor: STAGE_LOGIC[stage as Stage].color,
+                        borderRightColor: STAGE_LOGIC[stage as Stage].color,
+                        borderRadius: '50%',
+                        transform: `rotate(${progress * 3.6 - 45}deg)`,
+                        WebkitTransform: `rotate(${progress * 3.6 - 45}deg)`
+                      }}></div>
+                   ) : (
+                      <>
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          border: '3px solid transparent',
+                          borderTopColor: STAGE_LOGIC[stage as Stage].color,
+                          borderRightColor: STAGE_LOGIC[stage as Stage].color,
+                          borderBottomColor: STAGE_LOGIC[stage as Stage].color,
+                          borderLeftColor: STAGE_LOGIC[stage as Stage].color,
+                          borderRadius: '50%'
+                        }}></div>
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          border: '3px solid transparent',
+                          borderTopColor: '#1f2937',
+                          borderRightColor: '#1f2937',
+                          borderRadius: '50%',
+                          transform: `rotate(${(progress - 50) * 3.6 - 45}deg)`,
+                          WebkitTransform: `rotate(${(progress - 50) * 3.6 - 45}deg)`
+                        }}></div>
+                      </>
+                   )}
+                </div>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', fontFamily: 'monospace', color: 'white', position: 'relative' }}>{Math.floor(Math.max(0, STAGE_LOGIC[stage as Stage].duration - time))}</span>
              </div>
           </div>
         </div>
@@ -1117,70 +1183,70 @@ const UIOverlay = ({
     const isLocked = selectedStage > unlockedStage;
     const stageLogic = STAGE_LOGIC[selectedStage as Stage];
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-between bg-transparent p-0 text-center animate-fade-in z-50 overflow-hidden cursor-pointer" onClick={() => !isLocked && onStart(selectedStage)}>
-        <div className="absolute top-6 right-6 z-20 flex gap-4 text-xs font-bold tracking-widest text-gray-500 items-center pointer-events-auto" onClick={e => e.stopPropagation()}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: 0, textAlign: 'center', zIndex: 50, overflow: 'hidden', cursor: 'pointer' }} onClick={() => !isLocked && onStart(selectedStage)}>
+        <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 20, display: 'flex', gap: '16px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', alignItems: 'center', pointerEvents: 'auto', color: '#ffffff' }} onClick={e => e.stopPropagation()}>
              {Controls}
         </div>
-        <div className="absolute top-6 left-6 z-20 flex gap-4 text-xs font-bold tracking-widest text-gray-500 pointer-events-auto" onClick={e => e.stopPropagation()}>
-             <button onClick={() => ALLOW_SAFE_MODE_TOGGLE && toggleSafeMode()} className={`transition-colors uppercase ${safeMode ? 'text-green-500' : 'text-gray-600'} ${ALLOW_SAFE_MODE_TOGGLE ? 'hover:text-gray-400 cursor-pointer' : 'cursor-default'}`}>{t.ui.version} {safeMode && `[${t.ui.safeMode}]`}</button>
+        <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 20, display: 'flex', gap: '16px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', pointerEvents: 'auto' }} onClick={e => e.stopPropagation()}>
+             <button onClick={() => ALLOW_SAFE_MODE_TOGGLE && toggleSafeMode()} style={{ color: safeMode ? '#22c55e' : '#4b5563', textTransform: 'uppercase', transition: 'color 0.2s', cursor: ALLOW_SAFE_MODE_TOGGLE ? 'pointer' : 'default', backgroundColor: 'transparent', border: 'none', padding: 0, fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', WebkitAppearance: 'none' }}>{t.ui.version} {safeMode && `[${t.ui.safeMode}]`}</button>
         </div>
-        <div className="relative z-10 w-full max-w-2xl mt-24 pointer-events-none px-4">
-             <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] font-sans">{t.ui.titleMain}</h1>
-             <div className="flex justify-center items-center gap-4 mt-2 opacity-70">
-                <div className="h-[1px] w-8 md:w-12 bg-white/50"></div>
-                <div className="text-[10px] md:text-sm font-bold text-cyan-200 tracking-[0.8em] uppercase shadow-cyan-500/50">{t.ui.titleSub}</div>
-                <div className="h-[1px] w-8 md:w-12 bg-white/50"></div>
+        <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '42rem', marginTop: '96px', pointerEvents: 'none', paddingLeft: '16px', paddingRight: '16px' }}>
+             <h1 style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.05em', color: 'white', textTransform: 'uppercase', textShadow: '0 0 15px rgba(255,255,255,0.8)', fontFamily: 'sans-serif' }}>{t.ui.titleMain}</h1>
+             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '8px', opacity: 0.7 }}>
+                <div style={{ height: '1px', width: '32px', backgroundColor: 'rgba(255,255,255,0.5)' }}></div>
+                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#a5f3fc', letterSpacing: '0.8em', textTransform: 'uppercase', textShadow: '0 0 5px rgba(6,182,212,0.5)' }}>{t.ui.titleSub}</div>
+                <div style={{ height: '1px', width: '32px', backgroundColor: 'rgba(255,255,255,0.5)' }}></div>
              </div>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center w-full pointer-events-none p-4">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', pointerEvents: 'none', padding: '16px' }}>
             {isLocked ? (
-                <div className="text-red-900 font-bold tracking-[0.3em] text-sm animate-pulse border border-red-900/50 px-4 py-2 bg-black/50 backdrop-blur-sm">{t.ui.lockedDesc}</div>
+                <div style={{ color: '#7f1d1d', fontWeight: 'bold', letterSpacing: '0.3em', fontSize: '14px', border: '1px solid rgba(127,29,29,0.5)', padding: '8px 16px', backgroundColor: 'rgba(0,0,0,0.5)' }}>{t.ui.lockedDesc}</div>
             ) : (
-                <div className="flex flex-col items-center gap-4 animate-pulse">
-                     <span className="text-[10px] md:text-xs font-bold tracking-[0.3em] text-white/50 border-t border-b border-white/10 py-1 px-4 backdrop-blur-sm">{t.ui.startHint}</span>
-                     <div className="flex items-center gap-3 opacity-40">
-                        <div className="w-1 h-1 bg-red-500"></div><span className="text-[8px] tracking-[0.4em] uppercase text-red-200">{t.ui.gameplayHint}</span><div className="w-1 h-1 bg-red-500"></div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                     <span style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.5)', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '4px 16px' }}>{t.ui.startHint}</span>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.4 }}>
+                        <div style={{ width: '4px', height: '4px', backgroundColor: '#ef4444' }}></div><span style={{ fontSize: '8px', letterSpacing: '0.4em', textTransform: 'uppercase', color: '#fecaca' }}>{t.ui.gameplayHint}</span><div style={{ width: '4px', height: '4px', backgroundColor: '#ef4444' }}></div>
                      </div>
                 </div>
             )}
         </div>
-        <div className="relative z-10 w-full flex flex-col items-center pointer-events-auto bg-gradient-to-t from-black via-black/80 to-transparent pt-12" onClick={e => e.stopPropagation()}> 
-            <div className="w-full max-w-lg mb-8">
-                <div className="text-center mb-6 h-6">
-                     <h2 className="text-xl font-bold tracking-[0.2em] transition-colors duration-300 font-sans" style={{ color: isLocked ? '#374151' : stageLogic.color }}>{t.stages[selectedStage as Stage].name}</h2>
+        <div style={{ position: 'relative', zIndex: 10, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'auto', background: 'linear-gradient(to top, black, rgba(0,0,0,0.8), transparent)', paddingTop: '48px' }} onClick={e => e.stopPropagation()}> 
+            <div style={{ width: '100%', maxWidth: '32rem', marginBottom: '32px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '24px', height: '24px' }}>
+                     <h2 style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '0.2em', fontFamily: 'sans-serif', color: isLocked ? '#374151' : stageLogic.color }}>{t.stages[selectedStage as Stage].name}</h2>
                 </div>
-                <div className="flex items-center justify-center gap-8 relative px-4">
-                     <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/10 -z-10"></div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', position: 'relative', paddingLeft: '16px', paddingRight: '16px' }}>
+                     <div style={{ position: 'absolute', top: '50%', left: 0, width: '100%', height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', zIndex: -10 }}></div>
                      {[1, 2, 3, 4].map((s) => {
                          const isSelected = selectedStage === s;
                          const isUnlocked = s <= unlockedStage;
                          return (
-                            <button key={s} onClick={() => setSelectedStage(s)} className={`relative group transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}>
-                                <div className={`w-3 h-3 transition-all duration-300 transform rotate-45 ${isSelected ? 'bg-white shadow-[0_0_10px_white]' : isUnlocked ? 'bg-gray-600' : 'bg-gray-900 border border-gray-800'}`}></div>
-                                <span className={`absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-widest transition-colors duration-300 ${isSelected ? 'text-white' : 'text-gray-700'}`}>0{s}</span>
+                            <button key={s} onClick={() => setSelectedStage(s)} style={{ position: 'relative', transition: 'all 0.3s', transform: isSelected ? 'scale(1.25)' : 'scale(1)', WebkitTransform: isSelected ? 'scale(1.25)' : 'scale(1)', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>
+                                <div style={{ width: '12px', height: '12px', transition: 'all 0.3s', transform: 'rotate(45deg)', WebkitTransform: 'rotate(45deg)', backgroundColor: isSelected ? 'white' : isUnlocked ? '#4b5563' : '#111827', border: isSelected ? 'none' : isUnlocked ? 'none' : '1px solid #1f2937', boxShadow: isSelected ? '0 0 10px white' : 'none' }}></div>
+                                <span style={{ position: 'absolute', bottom: '-24px', left: '50%', transform: 'translateX(-50%)', WebkitTransform: 'translateX(-50%)', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.1em', transition: 'color 0.3s', color: isSelected ? 'white' : '#374151' }}>0{s}</span>
                             </button>
                          )
                      })}
                 </div>
             </div>
-            <div className="w-full bg-black border-t border-white/10 z-40">
-                <div className="flex justify-center items-center gap-2 md:gap-4 px-4 py-3 whitespace-nowrap">
-                     <button onClick={() => setShowManual(true)} className="text-[10px] font-bold text-gray-500 hover:text-white tracking-widest transition-colors uppercase">{t.ui.manual}</button>
-                     <span className="text-gray-800 text-[10px]">/</span>
-                     <button onClick={toggleAchievements} className="text-[10px] font-bold text-gray-500 hover:text-yellow-500 tracking-widest transition-colors uppercase">{t.ui.achievements}</button>
-                     <span className="text-gray-800 text-[10px]">/</span>
+            <div style={{ width: '100%', backgroundColor: 'black', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 40 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', whiteSpace: 'nowrap' }}>
+                     <button onClick={() => setShowManual(true)} style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>{t.ui.manual}</button>
+                     <span style={{ color: '#1f2937', fontSize: '10px' }}>/</span>
+                     <button onClick={toggleAchievements} style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>{t.ui.achievements}</button>
+                     <span style={{ color: '#1f2937', fontSize: '10px' }}>/</span>
                      {lang === 'CN' && (
                         <>
-                            <button onClick={() => setShowMorePlatforms(true)} className="text-[10px] font-bold text-gray-500 hover:text-green-400 tracking-widest transition-colors uppercase">{t.ui.morePlatforms}</button>
-                            <span className="text-gray-800 text-[10px]">/</span>
+                            <button onClick={() => setShowMorePlatforms(true)} style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>{t.ui.morePlatforms}</button>
+                            <span style={{ color: '#1f2937', fontSize: '10px' }}>/</span>
                         </>
                      )}
-                     <button onClick={() => setShowLegal(true)} className="text-[10px] font-bold text-gray-500 hover:text-cyan-400 tracking-widest transition-colors uppercase">{t.ui.disclaimer}</button>
-                     <span className="text-gray-800 text-[10px]">/</span>
-                     <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-gray-500 hover:text-indigo-400 tracking-widest transition-colors uppercase">{t.ui.privacy}</button>
+                     <button onClick={() => setShowLegal(true)} style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>{t.ui.disclaimer}</button>
+                     <span style={{ color: '#1f2937', fontSize: '10px' }}>/</span>
+                     <button onClick={() => setShowPrivacy(true)} style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'color 0.2s', backgroundColor: 'transparent', border: 'none', padding: 0, WebkitAppearance: 'none' }}>{t.ui.privacy}</button>
                 </div>
-                <div className="w-full text-center border-t border-white/5 py-2 pb-4 bg-black">
-                    <p className="text-[9px] text-gray-700 font-mono tracking-[0.2em] opacity-60">COPYRIGHT © 2026 DEEP SPACE STUDIO</p>
+                <div style={{ width: '100%', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', paddingBottom: '16px', backgroundColor: 'black' }}>
+                    <p style={{ fontSize: '9px', color: '#374151', fontFamily: 'monospace', letterSpacing: '0.2em', opacity: 0.6 }}>COPYRIGHT © 2026 DEEP SPACE STUDIO</p>
                 </div>
             </div>
         </div>
@@ -1190,19 +1256,19 @@ const UIOverlay = ({
 
   if (gameState === "GAME_OVER") {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/20 backdrop-blur-xl p-8 text-center animate-bounce-in z-50">
-        <div className="w-full max-w-sm bg-[#0a0a10]/95 shadow-[0_0_50px_rgba(220,38,38,0.2)] p-1 relative border-l border-r border-red-500/20">
-            <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-red-500"></div>
-            <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-red-500"></div>
-            <div className="p-8">
-                <h2 className="text-3xl font-black text-red-500 mb-2 tracking-widest uppercase font-sans">{t.ui.crash}</h2>
-                <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-red-500/50 to-transparent mb-4"></div>
-                <p className="text-red-100 text-xs mb-8 italic opacity-60 font-mono leading-relaxed">"{flavorText}"</p>
-                <div className="mb-8 p-4 bg-red-900/10 border border-red-500/10">
-                    <div className="text-[9px] text-red-400 uppercase tracking-[0.3em] mb-1">{t.ui.score}</div>
-                    <div className="text-4xl font-mono text-white">{score}</div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(127,29,29,0.2)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '32px', textAlign: 'center', zIndex: 50 }}>
+        <div style={{ width: '100%', maxWidth: '24rem', backgroundColor: 'rgba(10,10,16,0.95)', boxShadow: '0 0 50px rgba(220,38,38,0.2)', padding: '4px', position: 'relative', borderLeft: '1px solid rgba(239,68,68,0.2)', borderRight: '1px solid rgba(239,68,68,0.2)' }}>
+            <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '8px', height: '8px', borderTop: '1px solid #ef4444', borderLeft: '1px solid #ef4444' }}></div>
+            <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', borderBottom: '1px solid #ef4444', borderRight: '1px solid #ef4444' }}></div>
+            <div style={{ padding: '32px' }}>
+                <h2 style={{ fontSize: '30px', fontWeight: 900, color: '#ef4444', marginBottom: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>{t.ui.crash}</h2>
+                <div style={{ height: '1px', width: '100%', background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.5), transparent)', marginBottom: '16px' }}></div>
+                <p style={{ color: '#fecaca', fontSize: '12px', marginBottom: '32px', fontStyle: 'italic', opacity: 0.6, fontFamily: 'monospace', lineHeight: 1.6 }}>"{flavorText}"</p>
+                <div style={{ marginBottom: '32px', padding: '16px', backgroundColor: 'rgba(127,29,29,0.1)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                    <div style={{ fontSize: '9px', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.3em', marginBottom: '4px' }}>{t.ui.score}</div>
+                    <div style={{ fontSize: '36px', fontFamily: 'monospace', color: 'white' }}>{score}</div>
                 </div>
-                <div className="space-y-3">
+                <div>
                     <MenuButton primary onClick={() => onStart(stage)}>{t.ui.replay}</MenuButton>
                     <MenuButton onClick={() => { setSelectedStage(stage); onNextStage("MENU"); }}>{t.ui.quit}</MenuButton>
                 </div>
@@ -1218,22 +1284,22 @@ const UIOverlay = ({
     const mainColor = stageConfig.color;
 
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-xl p-8 text-center z-50" style={{ backgroundColor: `${mainColor}22` }}>
-         <div className="w-full max-w-sm bg-[#0a0a10]/95 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-1 relative border-l border-r" style={{ borderColor: `${mainColor}44`, boxShadow: `0 0 50px ${mainColor}33` }}>
-            <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l" style={{ borderColor: mainColor }}></div>
-            <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r" style={{ borderColor: mainColor }}></div>
-            <div className="p-8">
-                <h2 className="text-3xl font-black mb-2 tracking-widest uppercase font-sans" style={{ color: mainColor }}>{t.ui.stageComplete}</h2>
-                <div className="h-[1px] w-full mb-4" style={{ background: `linear-gradient(90deg, transparent, ${mainColor}80, transparent)` }}></div>
-                <p className="text-xs mb-6 italic opacity-80 font-mono" style={{ color: `${mainColor}cc` }}>"{flavorText}"</p>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '32px', textAlign: 'center', zIndex: 50, backgroundColor: `${mainColor}22` }}>
+         <div style={{ width: '100%', maxWidth: '24rem', backgroundColor: 'rgba(10,10,16,0.95)', boxShadow: `0 0 50px rgba(0,0,0,0.5)`, padding: '4px', position: 'relative', borderLeft: `1px solid ${mainColor}44`, borderRight: `1px solid ${mainColor}44` }}>
+            <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '8px', height: '8px', borderTop: `1px solid ${mainColor}`, borderLeft: `1px solid ${mainColor}` }}></div>
+            <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', borderBottom: `1px solid ${mainColor}`, borderRight: `1px solid ${mainColor}` }}></div>
+            <div style={{ padding: '32px' }}>
+                <h2 style={{ fontSize: '30px', fontWeight: 900, marginBottom: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'sans-serif', color: mainColor }}>{t.ui.stageComplete}</h2>
+                <div style={{ height: '1px', width: '100%', marginBottom: '16px', background: `linear-gradient(90deg, transparent, ${mainColor}80, transparent)` }}></div>
+                <p style={{ fontSize: '12px', marginBottom: '24px', fontStyle: 'italic', opacity: 0.8, fontFamily: 'monospace', color: `${mainColor}cc` }}>"{flavorText}"</p>
                 
-                <div className="p-4 border-l-2 mb-6 text-left relative overflow-hidden" style={{ backgroundColor: `${mainColor}11`, borderColor: mainColor }}>
-                    <div className="text-[9px] tracking-widest mb-1 uppercase" style={{ color: mainColor }}>Next Phase Detected</div>
-                    <div className="text-xl font-bold text-white mb-1 font-sans">{nextStageText.name}</div>
-                    <div className="text-[10px] text-gray-400 font-mono">{nextStageText.desc}</div>
+                <div style={{ padding: '16px', borderLeft: `2px solid ${mainColor}`, marginBottom: '24px', textAlign: 'left', position: 'relative', overflow: 'hidden', backgroundColor: `${mainColor}11` }}>
+                    <div style={{ fontSize: '9px', letterSpacing: '0.1em', marginBottom: '4px', textTransform: 'uppercase', color: mainColor }}>Next Phase Detected</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '4px', fontFamily: 'sans-serif' }}>{nextStageText.name}</div>
+                    <div style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'monospace' }}>{nextStageText.desc}</div>
                 </div>
                 
-                <div className="space-y-3">
+                <div>
                     <MenuButton primary onClick={onNextStage}>{t.ui.continue}</MenuButton>
                     <MenuButton onClick={() => onStart(stage)}>{t.ui.replay}</MenuButton>
                 </div>
@@ -1245,13 +1311,13 @@ const UIOverlay = ({
   
   if (gameState === "VICTORY") {
     return (
-       <div className="absolute inset-0 flex flex-col items-center justify-center bg-purple-900/30 backdrop-blur-xl p-8 text-center z-50">
-         <div className="w-full max-w-sm bg-[#0a0a10]/95 shadow-[0_0_60px_rgba(168,85,247,0.3)] p-1 relative border-l border-r border-purple-500/20">
-            <div className="p-10">
-                <h2 className="text-5xl font-black text-purple-400 mb-4 tracking-tighter uppercase font-sans">{t.ui.legend}</h2>
-                <p className="text-purple-100 text-sm mb-8 italic font-mono opacity-80">"{flavorText}"</p>
-                <div className="text-[10px] tracking-widest text-purple-300 mb-2">{t.ui.finalScore}</div>
-                <div className="text-6xl font-mono mb-8 text-white drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">{score}</div>
+       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(88,28,135,0.3)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '32px', textAlign: 'center', zIndex: 50 }}>
+         <div style={{ width: '100%', maxWidth: '24rem', backgroundColor: 'rgba(10,10,16,0.95)', boxShadow: '0 0 60px rgba(168,85,247,0.3)', padding: '4px', position: 'relative', borderLeft: '1px solid rgba(168,85,247,0.2)', borderRight: '1px solid rgba(168,85,247,0.2)' }}>
+            <div style={{ padding: '40px' }}>
+                <h2 style={{ fontSize: '48px', fontWeight: 900, color: '#c084fc', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>{t.ui.legend}</h2>
+                <p style={{ color: '#e9d5ff', fontSize: '14px', marginBottom: '32px', fontStyle: 'italic', fontFamily: 'monospace', opacity: 0.8 }}>"{flavorText}"</p>
+                <div style={{ fontSize: '10px', letterSpacing: '0.1em', color: '#d8b4fe', marginBottom: '8px' }}>{t.ui.finalScore}</div>
+                <div style={{ fontSize: '60px', fontFamily: 'monospace', marginBottom: '32px', color: 'white', textShadow: '0 0 10px rgba(168,85,247,0.5)' }}>{score}</div>
                 <MenuButton primary onClick={() => onStart(1)}>{t.ui.playAgain}</MenuButton>
             </div>
          </div>
@@ -1264,6 +1330,7 @@ const UIOverlay = ({
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   const [gameState, setGameState] = useState<GameState>("MENU");
   const [score, setScore] = useState(0);
@@ -1317,6 +1384,8 @@ const App = () => {
     }
 
     if (canvasRef.current) {
+      try {
+        console.log('[App] 初始化游戏引擎...');
         engineRef.current = new GameEngine(canvasRef.current, {
             onGameOver: (s: number, t: number) => {
                 setGameState("GAME_OVER");
@@ -1331,6 +1400,10 @@ const App = () => {
                 setStats(st);
                 localStorage.setItem('DEEP_SPACE_STATS', JSON.stringify(st));
                 
+                // 通知小程序游戏结束
+                wxNotifyGameOver(s, stageRef.current);
+                wxVibrate(false);
+                
                 if (bgmRef.current) BGM.stop();
             },
             onTimeUp: () => {
@@ -1344,12 +1417,18 @@ const App = () => {
                     setFlavorText(txt.victory[Math.floor(Math.random() * txt.victory.length)]);
                     st.maxStage = 5;
                     st.hellModeTime += 60;
+                    // 通知小程序通关
+                    wxNotifyStageClear(s, score);
+                    wxVibrate(false);
                 } else {
                     setGameState("STAGE_CLEAR");
                     setFlavorText(txt.stageClear[Math.floor(Math.random() * txt.stageClear.length)]);
                     if (s + 1 > st.maxStage) st.maxStage = (s + 1);
                     setUnlockedStage(st.maxStage as Stage);
                     Sound.playLevelClear();
+                    // 通知小程序关卡完成
+                    wxNotifyStageClear(s, score);
+                    wxVibrate(true);
                 }
                 setStats(st);
                 localStorage.setItem('DEEP_SPACE_STATS', JSON.stringify(st));
@@ -1363,6 +1442,14 @@ const App = () => {
                 setFlashMode(m);
             }
         });
+        
+        // 通知小程序游戏准备就绪
+        setTimeout(() => wxNotifyReady(), 1000);
+        console.log('[App] 游戏引擎初始化完成');
+      } catch (err: any) {
+        console.error('[App] 游戏引擎初始化失败:', err);
+        setInitError(err?.message || '初始化失败');
+      }
     }
     return () => engineRef.current?.destroy();
   }, []);
@@ -1413,8 +1500,26 @@ const App = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden select-none">
-        <canvas ref={canvasRef} className="block w-full h-full touch-none" />
+    <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: 'black', overflow: 'hidden', userSelect: 'none' }}>
+
+        {initError && (
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(255,0,0,0.9)',
+            color: '#fff',
+            padding: '20px',
+            borderRadius: '8px',
+            zIndex: 99999,
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>初始化错误</div>
+            <div style={{ fontSize: '12px' }}>{initError}</div>
+          </div>
+        )}
+        <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, display: 'block', width: '100%', height: '100%', touchAction: 'none', zIndex: 0 }} />
         <UIOverlay 
             gameState={gameState}
             stage={stage}
@@ -1446,5 +1551,37 @@ const App = () => {
   );
 };
 
-const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+// 全局错误处理
+try {
+  const rootElement = document.getElementById("root");
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+  
+  console.log('[Init] 创建 React root...');
+  const root = createRoot(rootElement);
+  console.log('[Init] 渲染 App...');
+  root.render(<App />);
+  console.log('[Init] 渲染完成');
+} catch (err: any) {
+  console.error('[Init] 致命错误:', err);
+  document.body.innerHTML = `
+    <div style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,0,0,0.9);
+      color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: monospace;
+      max-width: 80%;
+      word-break: break-all;
+    ">
+      <div style="font-weight: bold; margin-bottom: 10px;">启动失败</div>
+      <div style="font-size: 12px;">${err?.message || '未知错误'}</div>
+      <div style="font-size: 10px; margin-top: 10px; opacity: 0.7;">${navigator.userAgent}</div>
+    </div>
+  `;
+}

@@ -39,7 +39,43 @@
   <link rel="icon" href="data:,">
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- 加载提示 -->
+      <div id="loading" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #00d2ff;
+        font-family: monospace;
+        z-index: 99999;
+      ">
+        <div style="font-size: 18px; margin-bottom: 10px;">加载中...</div>
+        <div style="font-size: 12px; opacity: 0.6;">LOADING</div>
+      </div>
+    </div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      // 5秒后如果还在加载，显示调试信息
+      setTimeout(() => {
+        const loading = document.getElementById('loading');
+        if (loading && loading.style.display !== 'none') {
+          loading.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <div style="font-size: 14px; margin-bottom: 10px;">加载超时</div>
+              <div style="font-size: 10px; opacity: 0.6; max-width: 300px; word-break: break-all;">
+                UA: ${navigator.userAgent.substring(0, 100)}
+              </div>
+            </div>
+          `;
+        }
+      }, 5000);
+    </script>
   </body>
 </html>

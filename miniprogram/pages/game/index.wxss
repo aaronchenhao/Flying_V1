@@ -1,0 +1,161 @@
+/* 游戏容器 */
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* WebView 全屏 */
+web-view {
+  width: 100%;
+  height: 100%;
+}
+
+/* 加载遮罩 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+  z-index: 100;
+}
+
+.loading-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30rpx;
+}
+
+.loading-spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 4rpx solid rgba(0, 210, 255, 0.2);
+  border-top-color: #00d2ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 32rpx;
+  color: #fff;
+  letter-spacing: 8rpx;
+}
+
+.loading-hint {
+  font-size: 22rpx;
+  color: rgba(0, 210, 255, 0.6);
+  letter-spacing: 4rpx;
+}
+
+/* 错误遮罩 */
+.error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+  z-index: 200;
+}
+
+.error-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30rpx;
+  padding: 60rpx;
+}
+
+.error-icon {
+  font-size: 80rpx;
+  color: #ff0055;
+}
+
+.error-title {
+  font-size: 40rpx;
+  color: #ff0055;
+  font-weight: bold;
+  letter-spacing: 8rpx;
+}
+
+.error-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  max-width: 400rpx;
+}
+
+.btn-retry {
+  width: 300rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.2) 0%, rgba(0, 210, 255, 0.05) 100%);
+  border: 2rpx solid rgba(0, 210, 255, 0.6);
+  border-radius: 8rpx;
+  color: #fff;
+  font-size: 28rpx;
+  letter-spacing: 4rpx;
+  margin-top: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-retry::after {
+  border: none;
+}
+
+.btn-retry:active {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.3) 0%, rgba(0, 210, 255, 0.1) 100%);
+}
+
+.btn-back {
+  width: 300rpx;
+  height: 80rpx;
+  background: transparent;
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  border-radius: 8rpx;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 28rpx;
+  letter-spacing: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-back::after {
+  border: none;
+}
+
+.btn-back:active {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}

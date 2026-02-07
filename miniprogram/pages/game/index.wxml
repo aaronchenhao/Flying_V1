@@ -1,0 +1,29 @@
+<!-- WebView 游戏容器 -->
+<view class="game-container">
+  <web-view 
+    src="{{gameUrl}}" 
+    bind:message="handleMessage"
+    bind:load="onWebViewLoad"
+    bind:error="onWebViewError"
+  ></web-view>
+</view>
+
+<!-- 加载状态 -->
+<view class="loading-overlay {{loading ? 'show' : ''}}">
+  <view class="loading-content">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在建立神经连接...</text>
+    <text class="loading-hint">NEURAL LINK ESTABLISHING</text>
+  </view>
+</view>
+
+<!-- 错误提示 -->
+<view class="error-overlay {{error ? 'show' : ''}}">
+  <view class="error-content">
+    <text class="error-icon">⚠</text>
+    <text class="error-title">连接失败</text>
+    <text class="error-text">无法加载游戏资源，请检查网络连接</text>
+    <button class="btn-retry" bind:tap="retryLoad">重试</button>
+    <button class="btn-back" bind:tap="goBack">返回入口</button>
+  </view>
+</view>
