@@ -1,0 +1,20 @@
+{
+  "build": {
+    "command": "npm run build",
+    "outputDir": "dist"
+  },
+  "include": ["dist/**/*"],
+  "routes": [
+    {
+      "src": "/Flying_V1/assets/(.*)",
+      "dest": "/Flying_V1/assets/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/Flying_V1/(.*)",
+      "dest": "/Flying_V1/index.html"
+    }
+  ]
+}

@@ -1,11 +1,12 @@
 {
   "build": {
-    "command": "npm run build && ls -la dist/ && ls -la dist/assets/",
-    "outputDir": "dist",
-    "include": [
-      "dist/**/*"
-    ]
+    "command": "npm run build && echo '=== Build Output ===' && find dist -type f && echo '=== File Sizes ===' && du -sh dist/*",
+    "outputDir": "dist"
   },
+  "include": [
+    "dist/**/*",
+    "dist/assets/**/*"
+  ],
   "routes": [
     {
       "path": "/Flying_V1/assets/*",
