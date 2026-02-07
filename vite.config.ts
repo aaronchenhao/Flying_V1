@@ -19,6 +19,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     }
   },
-  // 使用相对路径，兼容 GitHub Pages 和腾讯云 Pages
-  base: './',
+  // 开发环境不使用 base，生产环境使用
+  base: process.env.NODE_ENV === 'production' ? '/Flying_V1/' : '/'
 });
