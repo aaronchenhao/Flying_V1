@@ -58,18 +58,6 @@
             <image class="qrcode-image" src="/images/qrcode-xiaohongshu.png" mode="aspectFit" show-menu-by-longpress />
             <text class="qrcode-desc">扫码关注开发日志</text>
           </view>
-          <!-- 微信公众号 -->
-          <view class="qrcode-item">
-            <text class="qrcode-label">微信公众号</text>
-            <image class="qrcode-image" src="/images/qrcode-wechat.png" mode="aspectFit" show-menu-by-longpress />
-            <text class="qrcode-desc">扫码获取绝密情报</text>
-          </view>
-          <!-- 抖音 -->
-          <view class="qrcode-item">
-            <text class="qrcode-label">抖音号</text>
-            <image class="qrcode-image" src="/images/qrcode-douyin.png" mode="aspectFit" show-menu-by-longpress />
-            <text class="qrcode-desc">扫码观看速通录像</text>
-          </view>
         </view>
       </scroll-view>
     </view>
