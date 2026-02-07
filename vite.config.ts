@@ -1,6 +1,21 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// 生成构建时间戳，用于强制刷新缓存
+const buildTimestamp = new Date().getTime();
+
+// 自定义插件：给 HTML 中的资源引用添加时间戳查询参数
+const cacheBustPlugin = (): Plugin => ({
+  name: 'cache-bust',
+  enforce: 'post',
+  transformIndexHtml(html) {
+    // 给 script 和 link 标签的 src/href 添加查询参数
+    return html
+      .replace(/src="([^"]+\.js)"/g, `src="$1?v=${buildTimestamp}"`)
+      .replace(/href="([^"]+\.css)"/g, `href="$1?v=${buildTimestamp}"`);
+  }
+});
 
 export default defineConfig({
   server: {
@@ -12,7 +27,7 @@ export default defineConfig({
       'Access-Control-Allow-Origin': '*'
     }
   },
-  plugins: [react()],
+  plugins: [react(), cacheBustPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
@@ -20,19 +35,4 @@ export default defineConfig({
   },
   // 开发环境不使用 base，生产环境使用
   base: process.env.NODE_ENV === 'production' ? '/Flying_V1/' : '/',
-  build: {
-    // 确保资源文件名包含哈希，便于缓存控制
-    rollupOptions: {
-      output: {
-        // 添加版本戳到入口文件名，避免缓存问题
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          return `assets/[name]-[hash][extname]`;
-        },
-      },
-    },
-  },
 });
