@@ -9,11 +9,17 @@ const buildTimestamp = new Date().getTime();
 const cacheBustPlugin = (): Plugin => ({
   name: 'cache-bust',
   enforce: 'post',
-  transformIndexHtml(html) {
-    // 给 script 和 link 标签的 src/href 添加查询参数
-    return html
-      .replace(/src="([^"]+\.js)"/g, `src="$1?v=${buildTimestamp}"`)
-      .replace(/href="([^"]+\.css)"/g, `href="$1?v=${buildTimestamp}"`);
+  transformIndexHtml(html, ctx) {
+    // 只在生产环境添加时间戳
+    if (ctx.bundle) {
+      // 给 script 和 link 标签的 src/href 添加查询参数
+      const result = html
+        .replace(/src="([^"]+\.js)"/g, `src="$1?v=${buildTimestamp}"`)
+        .replace(/href="([^"]+\.css)"/g, `href="$1?v=${buildTimestamp}"`);
+      console.log('[cache-bust] HTML transformed with timestamp:', buildTimestamp);
+      return result;
+    }
+    return html;
   }
 });
 
@@ -33,6 +39,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     }
   },
-  // 开发环境不使用 base，生产环境使用
-  base: process.env.NODE_ENV === 'production' ? '/Flying_V1/' : '/',
+  // 生产环境使用 /Flying_V1/ 作为基础路径
+  base: '/Flying_V1/',
 });

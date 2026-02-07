@@ -1,0 +1,20 @@
+{
+  "build": {
+    "command": "npm run build",
+    "outputDir": "dist"
+  },
+  "routes": [
+    {
+      "path": "/Flying_V1/assets/*",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "path": "/Flying_V1/*",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    }
+  ]
+}
