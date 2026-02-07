@@ -41,4 +41,11 @@ export default defineConfig({
   },
   // 生产环境使用 /Flying_V1/ 作为基础路径
   base: '/Flying_V1/',
+  publicDir: 'public',
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    // 确保资源被正确复制
+    copyPublicDir: true,
+  },
 });

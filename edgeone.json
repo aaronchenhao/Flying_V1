@@ -1,7 +1,10 @@
 {
   "build": {
-    "command": "npm run build",
-    "outputDir": "dist"
+    "command": "npm run build && ls -la dist/ && ls -la dist/assets/",
+    "outputDir": "dist",
+    "include": [
+      "dist/**/*"
+    ]
   },
   "routes": [
     {
@@ -12,6 +15,12 @@
     },
     {
       "path": "/Flying_V1/*",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "path": "/Flying_V1",
       "headers": {
         "Cache-Control": "no-cache, no-store, must-revalidate"
       }
