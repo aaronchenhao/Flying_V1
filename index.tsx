@@ -95,9 +95,7 @@ const TRANSLATIONS = {
                 "- Neuralink (开发中)"
             ],
             socialChannels: [
-                { name: "小红书", id: "xhs", color: "#ff2442", desc: "关注开发日志" },
-                { name: "微信公众号", id: "wechat", color: "#07c160", desc: "获取绝密情报" },
-                { name: "抖音", id: "douyin", color: "#ffffff", desc: "观看速通录像" }
+                { name: "小红书", id: "xhs", color: "#ff2442", desc: "关注开发日志" }
             ],
             faqContent: [
                 { q: "存档会丢失吗？", a: "不会。系统采用本地神经记忆（LocalStorage），进度实时自动保存。" },
@@ -199,9 +197,7 @@ const TRANSLATIONS = {
                 "- Neuralink (In Dev)"
             ],
             socialChannels: [
-                { name: "RED", id: "xhs", color: "#ff2442", desc: "Dev Logs" },
-                { name: "WeChat", id: "wechat", color: "#07c160", desc: "Secret Intel" },
-                { name: "TikTok", id: "douyin", color: "#ffffff", desc: "Speedruns" }
+                { name: "RED", id: "xhs", color: "#ff2442", desc: "Dev Logs" }
             ],
             faqContent: [
                 { q: "Will I lose my save?", a: "No. The system uses local neural memory (LocalStorage). Progress is saved automatically." },
@@ -977,25 +973,33 @@ const FAQModal = ({ onClose, lang }: { onClose: () => void, lang: Language }) =>
 }
 
 const MorePlatformsModal = ({ onClose, lang }: { onClose: () => void, lang: Language }) => {
-    const t = TRANSLATIONS[lang]; 
+    const t = TRANSLATIONS[lang];
     return (
         <TerminalModal title={t.ui.morePlatforms} onClose={onClose} color="cyan" showFooter={false}>
              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: '16px' }}>
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '48px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '40px' }}>
-                        {t.ui.socialChannels.map((channel, i) => (
-                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9ca3af', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '24px' }}>{channel.name}</div>
-                                <div style={{ position: 'relative', width: '192px', height: '192px' }}>
-                                    <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(6,182,212,0.05)', borderRadius: '50%' }}></div>
-                                    <div style={{ position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
-                                         <MockQRCode color={channel.color} name={channel.id} />
-                                    </div>
-                                    <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '8px', height: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', borderLeft: '1px solid rgba(255,255,255,0.3)' }}></div>
-                                    <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', borderBottom: '1px solid rgba(255,255,255,0.3)', borderRight: '1px solid rgba(255,255,255,0.3)' }}></div>
-                                </div>
+                        {/* 小红书二维码 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9ca3af', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '24px' }}>
+                                {lang === 'CN' ? '小红书' : 'RED'}
                             </div>
-                        ))}
+                            <div style={{ position: 'relative', width: '192px', height: '192px' }}>
+                                <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(6,182,212,0.05)', borderRadius: '50%' }}></div>
+                                <div style={{ position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', padding: '8px', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
+                                    <img
+                                        src="/xhs-qr.png"
+                                        alt="小红书二维码"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    />
+                                </div>
+                                <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '8px', height: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', borderLeft: '1px solid rgba(255,255,255,0.3)' }}></div>
+                                <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', borderBottom: '1px solid rgba(255,255,255,0.3)', borderRight: '1px solid rgba(255,255,255,0.3)' }}></div>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '16px', letterSpacing: '0.1em' }}>
+                                {lang === 'CN' ? '扫码关注开发日志' : 'Scan to follow dev logs'}
+                            </div>
+                        </div>
                     </div>
                 </div>
              </div>
