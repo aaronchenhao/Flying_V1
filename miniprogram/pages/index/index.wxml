@@ -1,6 +1,9 @@
 <!-- 背景 -->
 <star-bg />
 
+<!-- 版本号 -->
+<text class="version-tag">V 1.0.0</text>
+
 <!-- 主内容区 -->
 <view class="container">
   <!-- 顶部区域：标题 -->
@@ -9,7 +12,7 @@
       <text class="title-main">深空逃逸</text>
       <view class="title-sub-wrap">
         <view class="line"></view>
-        <text class="title-sub">规避协议</text>
+        <text class="title-sub">EVASION PROTOCOL</text>
         <view class="line"></view>
       </view>
     </view>
@@ -19,8 +22,9 @@
   <view class="main-actions">
     <button class="btn-primary" bind:tap="enterGame">
       <view class="play-icon"></view>
-      <text class="btn-text">访问官网</text>
+      <text class="btn-text">启动游戏</text>
     </button>
+    <text class="btn-hint">访问官方网站体验完整版</text>
   </view>
 
   <!-- 底部区域：次要操作和信息 -->
@@ -28,7 +32,7 @@
     <!-- 次要操作按钮组 -->
     <view class="secondary-actions">
       <button class="btn-secondary" bind:tap="showMorePlatforms">
-        <text class="btn-secondary-text">更多平台</text>
+        <text class="btn-secondary-text">关注我们</text>
       </button>
       <button class="btn-secondary" bind:tap="showDisclaimer">
         <text class="btn-secondary-text">用户协议</text>
@@ -42,7 +46,7 @@
   </view>
 </view>
 
-<!-- 更多平台弹窗 -->
+<!-- 关注我们弹窗 -->
 <view class="modal {{showPlatformsModal ? 'show' : ''}}" bind:tap="closeModal">
   <view class="modal-content" catch:tap="preventClose">
     <view class="modal-header">
@@ -68,26 +72,26 @@
 <view class="modal {{showDisclaimerModal ? 'show' : ''}}" bind:tap="closeModal">
   <view class="modal-content modal-large" catch:tap="preventClose">
     <view class="modal-header">
-      <text class="modal-title">用户协议与条款</text>
+      <text class="modal-title">用户协议</text>
       <button class="btn-close-inline" bind:tap="closeModal">×</button>
     </view>
     <view class="modal-body">
       <scroll-view scroll-y class="disclaimer-scroll">
         <view class="disclaimer-section">
-          <text class="disclaimer-title">1. 条款接受</text>
+          <text class="disclaimer-title">条款接受</text>
           <text class="disclaimer-text">启动本模拟程序（以下简称"游戏"）即表示您完全同意以下所有条款。如果您不同意，请立即断开神经连接（关闭游戏）。</text>
         </view>
         <view class="disclaimer-section">
-          <text class="disclaimer-title">2. 知识产权声明</text>
+          <text class="disclaimer-title">知识产权声明</text>
           <text class="disclaimer-text">本游戏的所有代码、视觉设计、音频资产及"深空 (DEEP SPACE)"品牌标识均归 DEEP SPACE STUDIO 所有。未经授权，严禁对本程序进行逆向工程、反编译或提取资源用于商业用途。</text>
         </view>
         <view class="disclaimer-section">
-          <text class="disclaimer-title">3. 免责声明 (重要)</text>
+          <text class="disclaimer-title">免责声明</text>
           <text class="disclaimer-text warning">健康警告：包含高频闪烁图像。光敏性癫痫患者请勿游玩。如感到头晕、恶心，请立即停止。</text>
           <text class="disclaimer-text">设备免责：游戏难度极高，旨在测试人类极限。开发者不对因玩家情绪失控导致的设备损坏负责。</text>
         </view>
         <view class="disclaimer-section">
-          <text class="disclaimer-title">4. 服务变更与终止</text>
+          <text class="disclaimer-title">服务变更与终止</text>
           <text class="disclaimer-text">DEEP SPACE STUDIO 保留随时修改、暂停或终止服务的权利，恕不另行通知。</text>
         </view>
       </scroll-view>
